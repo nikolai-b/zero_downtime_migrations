@@ -239,6 +239,35 @@ class BackportPublishedDefaultOnPosts < ActiveRecord::Migration
 end
 ```
 
+### Adding Foreign Keys
+
+#### Bad
+
+Adding a foreign key causes an AccessExclusiveLock on both tables which blocks reads.
+It is possible to add a foreign key in one step and validate later (which only causes RowShareLocks)
+
+```ruby
+class AddUsersForeignKeyToOrder < ActiveRecord::Migration
+  add_foreign_key :users, :order
+end
+```
+
+#### Good
+
+Add the foreign key and validate in another migration:
+
+```ruby
+class AddUsersForeignKeyToOrder < ActiveRecord::Migration
+  add_foreign_key :users, :order
+end
+
+class ValidateUsersForeignKeyToOrder < ActiveRecord::Migration
+  validate_foreign_key :users, :order
+end
+```
+
+Note, both `add_foreign_key` and `validate_foreign_key` accept `name` and `column` options.
+
 ### TODO
 
 * Changing a column type
