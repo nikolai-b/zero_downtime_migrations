@@ -241,10 +241,13 @@ end
 
 ### Adding Foreign Keys
 
-#### Bad
+Due to [this patch](https://git.postgresql.org/gitweb/?p=postgresql.git;a=commitdiff;h=0ef0396ae1687bf738d4703773d55467c36b2bcd) this section can be ignored if you are using Postgresql 9.5 or later.
 
-Adding a foreign key causes an AccessExclusiveLock on both tables which blocks reads.
+#### Bad (Before Postgresql 9.5)
+
+Before Postgresql 9.5 adding a foreign key causes an `AccessExclusiveLock` on both tables which blocks everything (including reads).
 It is possible to add a foreign key in one step and validate later (which only causes RowShareLocks)
+
 
 ```ruby
 class AddUsersForeignKeyToOrder < ActiveRecord::Migration

@@ -2,51 +2,77 @@ RSpec.describe ZeroDowntimeMigrations::Validation::AddForeignKey do
   let(:error) { ZeroDowntimeMigrations::UnsafeMigrationError }
 
   context "when the database supports_validate_constraints" do
-    context "adding a foreign key and not specifying validate" do
-      let(:migration) do
-        Class.new(ActiveRecord::Migration[5.0]) do
-          def change
-            create_table :order
-            add_column :users, :order_id, :integer
-            add_foreign_key :users, :order
+    context "when the postgresql version is before 9.5" do
+      before do
+        allow_any_instance_of(ActiveRecord::ConnectionAdapters::PostgreSQLAdapter).to receive(
+          :postgresql_version
+        ).and_return(90_400)
+      end
+
+      context "adding a foreign key and not specifying validate" do
+        let(:migration) do
+          Class.new(ActiveRecord::Migration[5.0]) do
+            def change
+              create_table :order
+              add_column :users, :order_id, :integer
+              add_foreign_key :users, :order
+            end
           end
+        end
+
+        it "raises an unsafe migration error" do
+          expect { migration.migrate(:up) }.to raise_error(error)
         end
       end
 
-      it "raises an unsafe migration error" do
-        expect { migration.migrate(:up) }.to raise_error(error)
+      context "adding a foreign key and specifying validate true" do
+        let(:migration) do
+          Class.new(ActiveRecord::Migration[5.0]) do
+            def change
+              create_table :order
+              add_column :users, :order_id, :integer
+              add_foreign_key :users, :order, validate: true
+            end
+          end
+        end
+
+        it "raises an unsafe migration error" do
+          expect { migration.migrate(:up) }.to raise_error(error)
+        end
+      end
+
+      context "adding a foreign key and specifying validate false" do
+        let(:migration) do
+          Class.new(ActiveRecord::Migration[5.0]) do
+            def change
+              create_table :order
+              add_column :users, :order_id, :integer
+              add_foreign_key :users, :order, validate: false
+            end
+          end
+        end
+
+        it "raises nothing" do
+          expect { migration.migrate(:up) }.to_not raise_error
+        end
       end
     end
 
-    context "adding a foreign key and specifying validate true" do
-      let(:migration) do
-        Class.new(ActiveRecord::Migration[5.0]) do
-          def change
-            create_table :order
-            add_column :users, :order_id, :integer
-            add_foreign_key :users, :order, validate: true
+    context "when the postgresql version is 9.5+" do
+      context "adding a foreign key and not specifying validate" do
+        let(:migration) do
+          Class.new(ActiveRecord::Migration[5.0]) do
+            def change
+              create_table :order
+              add_column :users, :order_id, :integer
+              add_foreign_key :users, :order
+            end
           end
         end
-      end
 
-      it "raises an unsafe migration error" do
-        expect { migration.migrate(:up) }.to raise_error(error)
-      end
-    end
-
-    context "adding a foreign key and specifying validate false" do
-      let(:migration) do
-        Class.new(ActiveRecord::Migration[5.0]) do
-          def change
-            create_table :order
-            add_column :users, :order_id, :integer
-            add_foreign_key :users, :order, validate: false
-          end
+        it "raises nothing" do
+          expect { migration.migrate(:up) }.to_not raise_error
         end
-      end
-
-      it "raises nothing" do
-        expect { migration.migrate(:up) }.to_not raise_error
       end
     end
   end
